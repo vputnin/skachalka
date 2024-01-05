@@ -1,15 +1,27 @@
 import telebot
 from telebot import types
 import requests
+from flask import Flask, request
 
-CHAT_BOT_ID = ''
-bot = telebot.TeleBot(CHAT_BOT_ID)
+app = Flask(__name__)
+
+# bot = telebot.TeleBot(CHAT_BOT_ID)
 
 # Replace this with the URL of your external server
 EXTERNAL_SERVER_URL = 'http://localhost:5000/search'
 
+TOKEN = ''
+bot = telebot.TeleBot(TOKEN, threaded=False)
+app = Flask(__name__)
+
 # Variables to store user data
 user_data = {}
+
+# Process webhook calls
+@app.route('/' + TOKEN, methods=['POST'])
+def getMessage():
+    bot.process_new_updates([telebot.types.Update.de_json(request.stream.read().decode("utf-8"))])
+    return "!", 200
 
 # Handler for the '/start' command
 @bot.message_handler(commands=['start'])
@@ -29,7 +41,7 @@ def echo_all(message):
     if message.text == 'Video Link':
         msg = bot.send_message(chat_id, 'Enter the video link:')
         bot.register_next_step_handler(msg, process_video_link_step)
-    elif message.text == 'Word':
+    elif message.text == 'Words':
         msg = bot.send_message(chat_id, 'Enter a list of words (separated by space):')
         bot.register_next_step_handler(msg, process_words_step)
     elif message.text == 'Send':
@@ -39,6 +51,7 @@ def echo_all(message):
 
 def process_video_link_step(message):
     chat_id = message.chat.id
+    print('message.text')
     user_data[chat_id]['video_link'] = message.text
     bot.send_message(chat_id, f'Video link saved: {message.text}')
 
@@ -62,3 +75,7 @@ def send_to_external_server(chat_id):
         # In case of an error, send the error message to the chat
         bot.send_message(chat_id, f'Failed to send data to server: {e}')
 bot.infinity_polling()
+
+# Start Flask server
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)), ssl_context='adhoc')
