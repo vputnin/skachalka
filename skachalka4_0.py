@@ -3,12 +3,14 @@ import whisper
 import json
 import os
 import re
+from flask import Flask, jsonify, request
 
-model = whisper.load_model("tiny")  # or "small", "medium", "large", "tiny"gf
+model = whisper.load_model("small")  # or "small", "medium", "large", "tiny"gf
 
 # output_audio_file = ""
 # output_audio_file_title = ""
 output_dir=r"C:\Users\putni\Desktop\skachalka";
+# output_dir="\\"
 
 class YouTubeHelper:
 
@@ -61,6 +63,9 @@ def download_audio(url):
         print(f"Error: {e}")
         
 def convert_audio_to_text(file_path):
+    print('FILE_PATH: ', file_path)
+    baseName = os.path.basename(file_path)
+    print('BASE NAME ' , baseName)
     file_name = output_dir + '\\' + os.path.basename(file_path)
     output_file_JSON = file_name + '_JSON' + '.txt';
     
@@ -93,10 +98,30 @@ def search_data(json_path, keyword):
             link_txt = generate_youtube_link(videoId, segment['start'])
             res += '[start: '+ str(segment['start']) + ' end: '+ str(segment['end'])+ '] ' + str(segment['text'] + ' URL: ' + link_txt)
             res += '\n'
-            print('[start: ', segment['start'], ' end: ', segment['end'], '] ' , segment['text']  + ' URL: ' + link_txt)
+    return res
 
 def generate_youtube_link(video_id, seconds):
     return f"https://www.youtube.com/watch?v={video_id}&t={seconds}s"
 
 
-starter()
+# starter() http://localhost:5000/search?url=https://www.youtube.com/watch?v=wrMJoKpK2mk&ab_channel=VincentStevenson&word_for_search=run
+
+app = Flask(__name__)
+
+@app.route('/search', methods=['GET'])
+def search():
+    url = request.args.get('url')
+    word_for_search = request.args.get('word_for_search')
+
+    print('url ', url)
+    print('word_for_search ', word_for_search)
+    file_path = download_audio(url)
+    print('FILE PATH: ', file_path)
+    json_path = convert_audio_to_text(file_path)
+    res = search_data(json_path, word_for_search)
+    print(res)
+    return res
+
+if __name__ == '__main__':
+    # app.run(debug=True)
+    app.run(host='0.0.0.0')
