@@ -1,27 +1,14 @@
 import telebot
 from telebot import types
+import os
+import json
 import requests
-from flask import Flask, request
 
-app = Flask(__name__)
-
-# bot = telebot.TeleBot(CHAT_BOT_ID)
-
-# Replace this with the URL of your external server
-EXTERNAL_SERVER_URL = 'http://localhost:5000/search'
-
-TOKEN = ''
-bot = telebot.TeleBot(TOKEN, threaded=False)
-app = Flask(__name__)
+TOKEN = os.environ['TG_TOKEN']  # Your Telegram Bot Token
+bot = telebot.TeleBot(TOKEN)
 
 # Variables to store user data
 user_data = {}
-
-# Process webhook calls
-@app.route('/' + TOKEN, methods=['POST'])
-def getMessage():
-    bot.process_new_updates([telebot.types.Update.de_json(request.stream.read().decode("utf-8"))])
-    return "!", 200
 
 # Handler for the '/start' command
 @bot.message_handler(commands=['start'])
@@ -51,7 +38,6 @@ def echo_all(message):
 
 def process_video_link_step(message):
     chat_id = message.chat.id
-    print('message.text')
     user_data[chat_id]['video_link'] = message.text
     bot.send_message(chat_id, f'Video link saved: {message.text}')
 
@@ -61,21 +47,32 @@ def process_words_step(message):
     bot.send_message(chat_id, f'Words saved: {message.text}')
 
 def send_to_external_server(chat_id):
-    requestParams = {}
-    requestParams['url'] = user_data[chat_id]['video_link']
-    requestParams['word_for_search'] = user_data[chat_id]['words']
+    request_params = {
+        'url': user_data[chat_id]['video_link'],
+        'word_for_search': user_data[chat_id]['words']
+    }
     
     try:
         # Sending a GET request to the external server
-        response = requests.get(EXTERNAL_SERVER_URL, params=requestParams)
-
+        # response = requests.get(os.environ['EXTERNAL_SERVER'], params=request_params)
+        bot.send_message(chat_id, f"For now i am not fully functioning. This message provides backend link {os.environ['EXTERNAL_SERVER']}")
         # Sending the server's response back to the user in the chat
-        bot.send_message(chat_id, f'Server response: {response.text}')
+        # bot.send_message(chat_id, f'Server response: {response.text}')
     except Exception as e:
         # In case of an error, send the error message to the chat
         bot.send_message(chat_id, f'Failed to send data to server: {e}')
-bot.infinity_polling()
 
-# Start Flask server
+# Entry point for Yandex Cloud Function
+def handler(event, context):
+    message = types.Update.de_json(event['body'])
+    bot.process_new_updates([message])
+    return {
+                "statusCode": 200,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({"mesage": "ok"})
+            }
+
+# For local tests.
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)), ssl_context='adhoc')
+    bot.infinity_polling()
+    
