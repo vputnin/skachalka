@@ -55,12 +55,23 @@ def send_to_external_server(chat_id):
     try:
         # Sending a GET request to the external server
         # response = requests.get(os.environ['EXTERNAL_SERVER'], params=request_params)
-        bot.send_message(chat_id, f"For now i am not fully functioning. This message provides backend link {os.environ['EXTERNAL_SERVER']}")
+        #bot.send_message(chat_id, "Please give me some time, your link is processing..")
         # Sending the server's response back to the user in the chat
         # bot.send_message(chat_id, f'Server response: {response.text}')
+        url = os.environ['EXTERNAL_SERVER']
+        words = ' '.join([item for item in user_data[chat_id]['words']])
+        link = user_data[chat_id]['video_link']
+        data = json.dumps({"Word": f"{words}" , "Url": f"{link}" })
+        # bot.send_message(chat_id, f'Data: {data}' )
+        response = requests.post(url= url,
+                                 data=data,
+                                 headers={'Content-Type': "application/json" })
+        bot.send_message(chat_id, f'Server response: {response.text}' )
+        bot.stop_polling()
     except Exception as e:
         # In case of an error, send the error message to the chat
         bot.send_message(chat_id, f'Failed to send data to server: {e}')
+        bot.stop_polling()
 
 # Entry point for Yandex Cloud Function
 def handler(event, context):
